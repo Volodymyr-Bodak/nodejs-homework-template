@@ -1,8 +1,17 @@
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
+const Joi = require('joi');
+
+
 
 const app = express();
+const contactSchema = Joi.object({
+  name: Joi.string().required(),
+  email: Joi.string().email().required(),
+  phone: Joi.string().required(),
+});
+
 
 
 const contacts = [
@@ -29,20 +38,8 @@ app.get('/api/contacts/:id', (req, res) => {
   }
 });
 
-// Route to add a new contact
-app.post('/api/contacts', (req, res) => {
-  const { name, email, phone } = req.body;
 
-  if (!name || !email || !phone) {
-    res.status(400).json({ message: 'Missing required fields' });
-  } else {
-    const newContact = { id: contacts.length + 1, name, email, phone };
-    contacts.push(newContact);
-    res.status(201).json(newContact);
-  }
-});
 
-// Route to delete a contact by ID
 app.delete('/api/contacts/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const index = contacts.findIndex(contact => contact.id === id);
@@ -55,14 +52,27 @@ app.delete('/api/contacts/:id', (req, res) => {
   }
 });
 
-// Route to update a contact by ID
+app.post('/api/contacts', (req, res) => {
+  const { error } = contactSchema.validate(req.body);
+
+  if (error) {
+    res.status(400).json({ message: error.details[0].message });
+  } else {
+    const { name, email, phone } = req.body;
+    const newContact = { id: contacts.length + 1, name, email, phone };
+    contacts.push(newContact);
+    res.status(201).json(newContact);
+  }
+});
+
 app.put('/api/contacts/:id', (req, res) => {
   const id = parseInt(req.params.id);
-  const { name, email, phone } = req.body;
+  const { error } = contactSchema.validate(req.body);
 
-  if (!name && !email && !phone) {
-    res.status(400).json({ message: 'Missing fields' });
+  if (error) {
+    res.status(400).json({ message: error.details[0].message });
   } else {
+    const { name, email, phone } = req.body;
     const index = contacts.findIndex(contact => contact.id === id);
 
     if (index !== -1) {
@@ -76,6 +86,7 @@ app.put('/api/contacts/:id', (req, res) => {
     }
   }
 });
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
